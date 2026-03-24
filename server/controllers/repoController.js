@@ -4,48 +4,12 @@ import { indexCodebase } from '../services/embeddingService.js';
 import { queryCodebase } from '../services/queryService.js';
 import { Groq } from 'groq-sdk';
 import crypto from 'crypto';
+import { retryWithBackoff } from '../utils.js';
 const getNamespace = (repoUrl) => {
   return crypto.createHash('sha256').update(repoUrl).digest('hex').substring(0, 16);
 };
 
-const retryWithBackoff = async (fn, maxRetries = 6, initialDelay = 5000) => {
-  let delay = initialDelay;
-  for (let i = 0; i < maxRetries; i++) {
-    try {
-      return await fn();
-    } catch (error) {
-      // 1. Broad detection of rate limits
-      const errorStr = JSON.stringify(error).toLowerCase() + (error.message || '').toLowerCase();
-      const isRateLimit = 
-        error.status === 429 || 
-        error.code === 429 || 
-        errorStr.includes('429') || 
-        errorStr.includes('exhausted') || 
-        errorStr.includes('quota') ||
-        errorStr.includes('403');
-
-      if (isRateLimit && i < maxRetries - 1) {
-        // 2. Try to extract specific retryDelay from Google's error metadata (e.g. "47s")
-        let waitTime = delay;
-        try {
-          // Look for "retryDelay":"X s" in the stringified error
-          const match = errorStr.match(/"retrydelay":"(\d+)s"/);
-          if (match && match[1]) {
-            waitTime = (parseInt(match[1]) + 2) * 1000; // Add 2s buffer
-          }
-        } catch (e) {
-          console.warn("[Retry] Failed to parse retryDelay from error, using backoff.");
-        }
-
-        console.log(`[Gemini Quota] Limit hit. Waiting ${waitTime}ms before attempt ${i + 2}/${maxRetries}...`);
-        await new Promise(res => setTimeout(res, waitTime));
-        delay *= 2;
-        continue;
-      }
-      throw error;
-    }
-  }
-};
+// Removed local retryWithBackoff and imported from utils.js
 
 export const indexRepository = async (req, res) => {
   const { repoUrl } = req.body;
@@ -64,7 +28,7 @@ export const indexRepository = async (req, res) => {
     const files = await crawlRepo(repoPath);
     
     // 3. Index
-    await indexCodebase(files, undefined, namespace);
+    await retryWithBackoff(() => indexCodebase(files, undefined, namespace));
 
     res.status(200).json({
       message: 'Repository indexed successfully',

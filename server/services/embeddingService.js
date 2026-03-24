@@ -1,5 +1,6 @@
 import { pipeline } from "@xenova/transformers";
 import { Pinecone } from "@pinecone-database/pinecone";
+import { retryWithBackoff } from "../utils.js";
 
 let pc;
 let embedder;
@@ -39,16 +40,16 @@ const ensureIndex = async (pinecone, indexName) => {
   const names = (existingIndexes.indexes || []).map((i) => i.name);
   if (!names.includes(indexName)) {
     console.log(`📦 Pinecone index "${indexName}" not found. Creating it...`);
-    await pinecone.createIndex({
+    await retryWithBackoff(() => pinecone.createIndex({
       name: indexName,
       dimension: 384,
       metric: "cosine",
       spec: { serverless: { cloud: "aws", region: "us-east-1" } },
-    });
+    }));
     let ready = false;
     for (let i = 0; i < 30; i++) {
       await new Promise((r) => setTimeout(r, 3000));
-      const desc = await pinecone.describeIndex(indexName);
+      const desc = await retryWithBackoff(() => pinecone.describeIndex(indexName));
       if (desc.status?.ready) { ready = true; break; }
     }
     if (!ready) throw new Error(`Pinecone index "${indexName}" did not become ready in time.`);
@@ -85,15 +86,15 @@ export const indexCodebase = async (
         },
       });
 
-      if (vectors.length === 100) {
-        await index.namespace(namespace).upsert({ records: vectors });
+      if (vectors.length === 50) {
+        await retryWithBackoff(() => index.namespace(namespace).upsert({ records: vectors }));
         vectors.length = 0;
-        console.log(`✅ Upserted batch of 100 vectors to namespace: ${namespace}...`);
+        console.log(`✅ Upserted batch of 50 vectors to namespace: ${namespace}...`);
       }
     }
 
     if (vectors.length > 0) {
-      await index.namespace(namespace).upsert({ records: vectors });
+      await retryWithBackoff(() => index.namespace(namespace).upsert({ records: vectors }));
     }
 
     console.log(

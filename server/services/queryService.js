@@ -1,6 +1,7 @@
 import { Pinecone } from "@pinecone-database/pinecone";
 import { pipeline } from "@xenova/transformers";
 import { Groq } from "groq-sdk";
+import { retryWithBackoff } from "../utils.js";
 
 let pc;
 let groq;
@@ -48,11 +49,11 @@ export const queryCodebase = async (question, namespace = "default") => {
     const questionEmbedding = Array.from(output.data);
 
     // 2. Search Pinecone for context
-    const queryResponse = await index.namespace(namespace).query({
+    const queryResponse = await retryWithBackoff(() => index.namespace(namespace).query({
       vector: questionEmbedding,
       topK: 10,
       includeMetadata: true,
-    });
+    }));
 
     if (queryResponse.matches.length === 0) {
       return "I couldn't find any relevant code in this repository to answer your question.";
@@ -78,7 +79,7 @@ export const queryCodebase = async (question, namespace = "default") => {
       ${context}
     `;
 
-    const chatCompletion = await ai.chat.completions.create({
+    const chatCompletion = await retryWithBackoff(() => ai.chat.completions.create({
       messages: [
         {
           role: "user",
@@ -86,7 +87,7 @@ export const queryCodebase = async (question, namespace = "default") => {
         }
       ],
       model: "llama-3.1-8b-instant",
-    });
+    }));
 
     return chatCompletion.choices[0]?.message?.content || "No response generated.";
 
