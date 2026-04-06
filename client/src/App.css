@@ -1,0 +1,32 @@
+/* App-specific styles loaded by App.js.
+   Global theming and layout is already defined in index.css.
+*/
+
+.App {
+  width: 100%;
+}
+
+.loading-fallback {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  color: #f0f0f0;
+}
+
+.premium-spinner {
+  width: 48px;
+  height: 48px;
+  border: 5px solid rgba(245, 176, 65, 0.3);
+  border-top-color: #f5b041;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
