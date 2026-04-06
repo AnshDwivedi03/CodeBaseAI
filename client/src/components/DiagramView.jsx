@@ -222,7 +222,7 @@ const DiagramView = ({ repoUrl, diagram, routes, diagramLoading, handleDiagram, 
 
         {diagram && !diagramLoading && (
         <>
-          <div className="diagram-result" style={{ minHeight: '600px', marginBottom: '2rem' }}>
+          <div className="diagram-result diagram-result-box">
             <div className="diagram-toolbar">
               <button className="zoom-btn" onClick={() => setScale(s => Math.min(s + 0.2, 4))}>＋ Zoom In</button>
               <span className="zoom-label">{Math.round(scale * 100)}%</span>

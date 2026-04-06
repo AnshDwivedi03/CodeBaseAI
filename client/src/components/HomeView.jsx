@@ -30,7 +30,7 @@ const HomeView = ({ repoUrl, setRepoUrl, handleIndex, indexing, indexed }) => {
       <div className="home-grid" style={{ flex: 1, paddingBottom: '3rem' }}>
         <div className="home-main-col">
           <h1 style={{ textTransform: 'uppercase', letterSpacing: '-2px' }}>Master Your Codebase.<br/><span className="gradient-text">The CodeBaseAI Way.</span></h1>
-          <p style={{ maxWidth: '580px', fontSize: '1.3rem' }}>
+          <p style={{ maxWidth: '580px', fontSize: '1.3rem', margin: '0 auto', textAlign: 'center' }}>
             Stop digging through thousands of lines of code. Let the AI index your repository
             and answer your most complex technical questions instantly.
           </p>

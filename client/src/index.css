@@ -24,13 +24,13 @@ body {
   color: var(--text-main);
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
-  height: 100vh;
+  height: 100dvh;
 }
 
 .animated-bg {
   position: relative;
   background: linear-gradient(135deg, #050505 0%, #111111 100%);
-  min-height: 100vh;
+  min-height: 100dvh;
   overflow: hidden;
 }
 
@@ -77,7 +77,7 @@ body {
 }
 
 .App {
-  height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   position: relative;
@@ -1108,5 +1108,69 @@ footer {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+.diagram-result-box {
+  min-height: 600px;
+  margin-bottom: 2rem;
+}
+
+/* Enhancements for Mobile Responsiveness */
+@media (max-width: 768px) {
+  nav {
+    padding: 0.5rem 1rem;
+    height: auto;
+    min-height: 60px;
+    flex-wrap: wrap; 
+    justify-content: center;
+    gap: 0.5rem;
+  }
+  .nav-logo {
+    width: 100%;
+    justify-content: center;
+    margin-bottom: 0.2rem;
+  }
+  .nav-links {
+    gap: 1.5rem;
+    justify-content: center;
+    width: 100%;
+  }
+  .nav-link {
+    font-size: 0.9rem;
+  }
+  .home-side-col div, .home-side-col p {
+    text-align: center;
+  }
+  .diagram-container {
+    padding: 0 1rem 1rem 1rem;
+    height: 100%;
+  }
+  .diagram-header {
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    text-align: center;
+  }
+  .diagram-title {
+    justify-content: center;
+  }
+  .diagram-generate-btn {
+    width: 100%;
+    max-width: 300px;
+  }
+  .diagram-toolbar {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+  .diagram-result-box {
+    min-height: 400px;
+  }
+  .view-analysis {
+    padding: 1rem 0;
+  }
+  h1 {
+    text-align: center;
   }
 }
