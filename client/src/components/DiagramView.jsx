@@ -1,26 +1,39 @@
 import React, { useEffect, useRef, useState } from 'react';
 import mermaid from 'mermaid';
+import FileTree from './FileTree';
 
 mermaid.initialize({
   startOnLoad: false,
   theme: 'dark',
   themeVariables: {
     darkMode: true,
-    background: '#0c0c0c',
-    primaryColor: '#1a1a1a',
+    background: '#0a0a0a',
+    primaryColor: '#1e1e2e',
     primaryTextColor: '#f4f4f5',
-    primaryBorderColor: '#333',
-    lineColor: '#71717a',
-    secondaryColor: '#111',
+    primaryBorderColor: '#f5b041',
+    lineColor: '#f5b041',
+    secondaryColor: '#161622',
     tertiaryColor: '#0c0c0c',
     edgeLabelBackground: '#0c0c0c',
     fontFamily: 'Outfit, sans-serif',
     fontSize: '14px',
+    clusterBkg: 'rgba(245, 176, 65, 0.05)',
+    clusterBorder: 'rgba(245, 176, 65, 0.25)',
   },
-  flowchart: { curve: 'basis', padding: 20 },
+  flowchart: {
+    curve: 'basis',
+    padding: 25,
+    nodeSpacing: 50,
+    rankSpacing: 60,
+    htmlLabels: true,
+    defaultRenderer: 'dagre-wrapper',
+    useMaxWidth: false,
+    diagramPadding: 30,
+    wrappingWidth: 200,
+  },
 });
 
-const DiagramView = ({ repoUrl, diagram, routes, diagramLoading, handleDiagram, diagramError }) => {
+const DiagramView = ({ repoUrl, diagram, routes, diagramLoading, handleDiagram, diagramError, filePaths }) => {
   const mermaidRef = useRef(null);
   const containerRef = useRef(null);
   
@@ -39,30 +52,73 @@ const DiagramView = ({ repoUrl, diagram, routes, diagramLoading, handleDiagram, 
   useEffect(() => {
     if (diagram && mermaidRef.current) {
       mermaidRef.current.innerHTML = '';
-      const id = `mermaid-${Date.now()}`;
       
       // Reset pan/zoom on new diagram
       setScale(1);
       setPosition({ x: 0, y: 0 });
 
-      mermaid.render(id, diagram)
-        .then(({ svg }) => {
+      const tryRender = async (diagramCode, attempt = 1) => {
+        const id = `mermaid-${Date.now()}-${attempt}`;
+        try {
+          const { svg } = await mermaid.render(id, diagramCode);
           if (mermaidRef.current) {
             mermaidRef.current.innerHTML = svg;
             const svgEl = mermaidRef.current.querySelector('svg');
             if (svgEl) {
-              svgEl.style.width = '100%';
-              svgEl.style.height = '100%';
-              svgEl.style.maxWidth = 'none'; // allow infinite scaling
+              const viewBox = svgEl.getAttribute('viewBox');
+              if (viewBox) {
+                const [, , w, h] = viewBox.split(' ');
+                svgEl.style.width = `${w}px`;
+                svgEl.style.height = `${h}px`;
+              } else {
+                svgEl.style.width = '100%';
+                svgEl.style.height = '100%';
+              }
+              svgEl.style.maxWidth = 'none';
             }
           }
-        })
-        .catch((err) => {
-          console.error('Mermaid render error:', err);
-          if (mermaidRef.current) {
-            mermaidRef.current.innerHTML = `<pre style="color:#71717a;font-size:0.85rem;overflow:auto;padding:1rem">${diagram}</pre>`;
+        } catch (err) {
+          console.error(`Mermaid render error (attempt ${attempt}):`, err);
+          
+          if (attempt === 1) {
+            // Retry: strip subgraphs which often cause issues
+            const simplified = diagramCode
+              .replace(/subgraph[\s\S]*?end/gi, '')
+              .replace(/style\s+\w+.*/gi, '')
+              .replace(/classDef\s+.*/gi, '')
+              .replace(/class\s+.*/gi, '')
+              .split('\n')
+              .filter(l => l.trim())
+              .join('\n');
+            console.log('[Mermaid] Retrying without subgraphs...');
+            return tryRender(simplified, 2);
           }
-        });
+          
+          if (attempt === 2) {
+            // Last resort: extract just nodes and arrows
+            const lines = diagramCode.split('\n');
+            const safeLines = lines.filter(l => {
+              const t = l.trim();
+              return t.startsWith('flowchart') || t.startsWith('graph') || t.includes('-->');
+            });
+            if (safeLines.length > 1) {
+              console.log('[Mermaid] Retrying with arrows only...');
+              return tryRender(safeLines.join('\n'), 3);
+            }
+          }
+          
+          // Final fallback: show raw code
+          if (mermaidRef.current) {
+            mermaidRef.current.innerHTML = `
+              <div style="padding:2rem;text-align:center;">
+                <div style="color:#f5b041;font-weight:600;margin-bottom:1rem;">⚠ Diagram rendered as text (Mermaid syntax error)</div>
+                <pre style="color:#a0a0a0;font-size:0.8rem;overflow:auto;padding:1rem;background:rgba(0,0,0,0.3);border-radius:12px;text-align:left;max-height:400px">${diagramCode}</pre>
+              </div>`;
+          }
+        }
+      };
+
+      tryRender(diagram);
     }
   }, [diagram]);
 
@@ -252,6 +308,11 @@ const DiagramView = ({ repoUrl, diagram, routes, diagramLoading, handleDiagram, 
                 })}
               </div>
             </div>
+          )}
+
+          {/* File Tree Section */}
+          {filePaths && filePaths.length > 0 && (
+            <FileTree filePaths={filePaths} repoUrl={repoUrl} />
           )}
         </>
         )}

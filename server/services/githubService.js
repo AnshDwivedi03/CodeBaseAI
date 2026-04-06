@@ -12,8 +12,8 @@ export const cloneRepo = async (repoUrl) => {
 
     console.log(`Cloning ${repoUrl} to ${tempPath}...`);
 
-    // 3. Clone the repository
-    await git.clone(repoUrl, tempPath);
+    // 3. Clone the repository (shallow clone to save time)
+    await git.clone(repoUrl, tempPath, ['--depth', '1', '--single-branch']);
 
     return tempPath;
   } catch (error) {

@@ -16,31 +16,34 @@ export const crawlRepo = async (dirPath, currentPath = '') => {
   try {
     const entries = await fs.readdir(fullPath, { withFileTypes: true });
 
-    for (const entry of entries) {
+    const promises = entries.map(async (entry) => {
       const entryPath = path.join(currentPath, entry.name);
 
       if (entry.isDirectory()) {
-        if (IGNORED_DIRS.has(entry.name)) continue;
-        const subDirFiles = await crawlRepo(dirPath, entryPath);
-        files = files.concat(subDirFiles);
+        if (IGNORED_DIRS.has(entry.name)) return [];
+        return await crawlRepo(dirPath, entryPath);
       } else if (entry.isFile()) {
-        if (IGNORED_FILES.has(entry.name)) continue;
+        if (IGNORED_FILES.has(entry.name)) return [];
         
         const ext = path.extname(entry.name).toLowerCase();
-        if (!ALLOWED_EXTENSIONS.has(ext)) continue;
+        if (!ALLOWED_EXTENSIONS.has(ext)) return [];
 
         try {
           const content = await fs.readFile(path.join(dirPath, entryPath), 'utf-8');
-          files.push({
+          return [{
             path: entryPath,
             content
-          });
+          }];
         } catch (readError) {
           console.warn(`Failed to read file ${entryPath}:`, readError.message);
-          // Skip files that can't be read (e.g. binary files mistaken for text)
+          return [];
         }
       }
-    }
+      return [];
+    });
+
+    const results = await Promise.all(promises);
+    files = results.flat();
   } catch (error) {
     console.error(`Error crawling directory ${fullPath}:`, error);
     throw error;

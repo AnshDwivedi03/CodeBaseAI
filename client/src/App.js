@@ -37,6 +37,7 @@ function App() {
   const [routes, setRoutes] = useState(null);
   const [diagramLoading, setDiagramLoading] = useState(false);
   const [diagramError, setDiagramError] = useState(null);
+  const [filePaths, setFilePaths] = useState([]);
 
   React.useEffect(() => {
     const titles = {
@@ -55,6 +56,7 @@ function App() {
       setMessages([]);
       setDiagram(null);
       setDiagramError(null);
+      setFilePaths([]);
     }
     setView(newView);
   };
@@ -126,6 +128,7 @@ function App() {
       if (response.ok) {
         setDiagram(data.diagram);
         setRoutes(data.routes || []);
+        setFilePaths(data.filePaths || []);
       } else {
         setDiagramError(data.error || 'Failed to generate diagram.');
       }
@@ -173,6 +176,7 @@ function App() {
               diagramLoading={diagramLoading}
               diagramError={diagramError}
               handleDiagram={handleDiagram}
+              filePaths={filePaths}
             />
           )}
         </Suspense>

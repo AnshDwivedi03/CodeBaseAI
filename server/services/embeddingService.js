@@ -35,28 +35,6 @@ export const generateEmbedding = async (text) => {
   }
 };
 
-const ensureIndex = async (pinecone, indexName) => {
-  const existingIndexes = await pinecone.listIndexes();
-  const names = (existingIndexes.indexes || []).map((i) => i.name);
-  if (!names.includes(indexName)) {
-    console.log(`📦 Pinecone index "${indexName}" not found. Creating it...`);
-    await retryWithBackoff(() => pinecone.createIndex({
-      name: indexName,
-      dimension: 384,
-      metric: "cosine",
-      spec: { serverless: { cloud: "aws", region: "us-east-1" } },
-    }));
-    let ready = false;
-    for (let i = 0; i < 30; i++) {
-      await new Promise((r) => setTimeout(r, 3000));
-      const desc = await retryWithBackoff(() => pinecone.describeIndex(indexName));
-      if (desc.status?.ready) { ready = true; break; }
-    }
-    if (!ready) throw new Error(`Pinecone index "${indexName}" did not become ready in time.`);
-    console.log(`✅ Pinecone index "${indexName}" created and ready.`);
-  }
-};
-
 export const indexCodebase = async (
   files,
   onProgress,
@@ -65,40 +43,50 @@ export const indexCodebase = async (
   try {
     const pinecone = getPC();
     const indexName = "repoinsight-groq";
-    await ensureIndex(pinecone, indexName);
+    
+    // Using Pinecone SDK v7's createIndex directly with suppressConflicts.
+    try {
+      await pinecone.createIndex({
+        name: indexName,
+        dimension: 384,
+        metric: "cosine",
+        spec: { serverless: { cloud: "aws", region: "us-east-1" } },
+        suppressConflicts: true
+      });
+    } catch (createErr) {
+      // Ignore if index already exists or suppressConflicts fails on old tier
+      console.log(`Index ${indexName} might already exist or createIndex threw:`, createErr.message || createErr);
+    }
     const index = pinecone.index(indexName);
     const vectors = [];
 
     console.log(`🚀 Generating embeddings for ${files.length} files in namespace: ${namespace}...`);
 
-    for (const file of files) {
-      if (!file.content || file.content.trim() === "") continue;
+    const validFiles = files.filter(f => f.content && f.content.trim() !== "");
+    const batchSize = 25;
 
-      const embedding = await generateEmbedding(file.content);
-      const id = Buffer.from(file.path).toString("base64");
+    for (let i = 0; i < validFiles.length; i += batchSize) {
+      const chunk = validFiles.slice(i, i + batchSize);
+      
+      const batchVectors = await Promise.all(chunk.map(async (file) => {
+        const embedding = await generateEmbedding(file.content);
+        const id = Buffer.from(file.path).toString("base64");
+        return {
+          id,
+          values: embedding,
+          metadata: {
+            path: file.path,
+            content: file.content.substring(0, 1000), 
+          },
+        };
+      }));
 
-      vectors.push({
-        id,
-        values: embedding,
-        metadata: {
-          path: file.path,
-          content: file.content.substring(0, 1000), 
-        },
-      });
-
-      if (vectors.length === 50) {
-        await retryWithBackoff(() => index.namespace(namespace).upsert({ records: vectors }));
-        vectors.length = 0;
-        console.log(`✅ Upserted batch of 50 vectors to namespace: ${namespace}...`);
-      }
-    }
-
-    if (vectors.length > 0) {
-      await retryWithBackoff(() => index.namespace(namespace).upsert({ records: vectors }));
+      await retryWithBackoff(() => index.namespace(namespace).upsert({ records: batchVectors }));
+      console.log(`✅ Upserted batch of ${batchVectors.length} vectors to namespace: ${namespace}... (${Math.min(i + batchSize, validFiles.length)}/${validFiles.length})`);
     }
 
     console.log(
-      `✅ Successfully indexed ${files.length} files in Pinecone index: ${indexName} (namespace: ${namespace})`
+      `✅ Successfully indexed ${validFiles.length} files in Pinecone index: ${indexName} (namespace: ${namespace})`
     );
   } catch (error) {
     console.error("❌ Error indexing codebase:", JSON.stringify(error, Object.getOwnPropertyNames(error), 2));

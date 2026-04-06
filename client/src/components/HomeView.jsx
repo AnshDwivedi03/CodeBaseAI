@@ -1,7 +1,30 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Footer from './Footer';
 
+const loadingSteps = [
+  "Cloning Repository...",
+  "Parsing File Tree...",
+  "Generating Semantic Embeddings...",
+  "Upserting to Vector DB...",
+  "Finalizing Analysis..."
+];
+
 const HomeView = ({ repoUrl, setRepoUrl, handleIndex, indexing, indexed }) => {
+  const [stepIndex, setStepIndex] = useState(0);
+
+  useEffect(() => {
+    let interval;
+    if (indexing) {
+      setStepIndex(0);
+      interval = setInterval(() => {
+        setStepIndex((prev) => (prev < loadingSteps.length - 1 ? prev + 1 : prev));
+      }, 2500); // Progress to next step every 2.5s
+    } else {
+      setStepIndex(0);
+    }
+    return () => clearInterval(interval);
+  }, [indexing]);
+
   return (
     <div className="content-wrapper animate" style={{ display: 'flex', flexDirection: 'column', minHeight: '100%', width: '100%' }}>
       <div className="home-grid" style={{ flex: 1, paddingBottom: '3rem' }}>
@@ -21,12 +44,67 @@ const HomeView = ({ repoUrl, setRepoUrl, handleIndex, indexing, indexed }) => {
                 value={repoUrl}
                 onChange={(e) => setRepoUrl(e.target.value)}
                 style={{ padding: '1rem', fontSize: '1rem', textAlign: 'center', background: 'rgba(0,0,0,0.6)' }}
+                disabled={indexing}
               />
-              <button className="btn-primary" onClick={handleIndex} disabled={indexing} style={{ padding: '1rem', fontSize: '1rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                {indexing ? 'Syncing...' : 'Initialize Analysis'}
-              </button>
+              {!indexing && (
+                <button className="btn-primary" onClick={handleIndex} disabled={!repoUrl || indexing} style={{ padding: '1rem', fontSize: '1rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                  Initialize Analysis
+                </button>
+              )}
             </div>
-            {indexed && <div className="success-tag animate" style={{ justifyContent: 'center', marginTop: '1rem', fontSize: '0.9rem' }}>✓ Link Established</div>}
+            
+            {indexing && (
+              <div style={{ marginTop: '1.5rem', animation: 'fadeIn 0.4s ease-in-out' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                  {loadingSteps.map((step, i) => {
+                    const isCompleted = i < stepIndex;
+                    const isActive = i === stepIndex;
+                    return (
+                      <div key={i} style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.75rem',
+                        padding: '0.55rem 0.75rem',
+                        borderRadius: '8px',
+                        background: isActive ? 'rgba(234,179,8,0.08)' : 'transparent',
+                        border: isActive ? '1px solid rgba(234,179,8,0.3)' : '1px solid transparent',
+                        transition: 'all 0.4s ease',
+                      }}>
+                        {/* Icon */}
+                        <div style={{ width: '22px', height: '22px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          {isCompleted && (
+                            <span style={{ color: '#22c55e', fontSize: '1rem' }}>✓</span>
+                          )}
+                          {isActive && (
+                            <div style={{
+                              width: '16px', height: '16px', borderRadius: '50%',
+                              border: '2px solid var(--primary)',
+                              borderTopColor: 'transparent',
+                              animation: 'spin 0.8s linear infinite',
+                            }} />
+                          )}
+                          {!isCompleted && !isActive && (
+                            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#444' }} />
+                          )}
+                        </div>
+                        {/* Label */}
+                        <span style={{
+                          fontSize: '0.9rem',
+                          fontWeight: isActive ? '600' : '400',
+                          color: isCompleted ? '#22c55e' : isActive ? 'var(--primary)' : '#555',
+                          transition: 'color 0.3s ease',
+                        }}>{step}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                <p style={{ color: '#555', fontSize: '0.8rem', marginTop: '1rem', textAlign: 'center' }}>
+                  This may take a minute for large repositories.
+                </p>
+              </div>
+            )}
+            
+            {indexed && !indexing && <div className="success-tag animate" style={{ justifyContent: 'center', marginTop: '1rem', fontSize: '0.9rem' }}>✓ Link Established</div>}
           </div>
         </div>
 
