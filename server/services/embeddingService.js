@@ -68,23 +68,25 @@ export const indexCodebase = async (
     for (let i = 0; i < validFiles.length; i += batchSize) {
       const chunk = validFiles.slice(i, i + batchSize);
       
-      const batchVectors = [];
-      for (const file of chunk) {
-        try {
-          const embedding = await generateEmbedding(file.content);
-          const id = Buffer.from(file.path).toString("base64");
-          batchVectors.push({
-            id,
-            values: embedding,
-            metadata: {
-              path: file.path,
-              content: file.content.substring(0, 1000), 
-            },
-          });
-        } catch (fileErr) {
-          console.warn(`⚠️ Skipped embedding for ${file.path}: ${fileErr.message}`);
-        }
-      }
+      const batchVectors = (await Promise.all(
+        chunk.map(async (file) => {
+          try {
+            const embedding = await generateEmbedding(file.content);
+            const id = Buffer.from(file.path).toString("base64");
+            return {
+              id,
+              values: embedding,
+              metadata: {
+                path: file.path,
+                content: file.content.substring(0, 1000), 
+              },
+            };
+          } catch (fileErr) {
+            console.warn(`⚠️ Skipped embedding for ${file.path}: ${fileErr.message}`);
+            return null;
+          }
+        })
+      )).filter(Boolean);
 
       if(batchVectors.length > 0) {
         await retryWithBackoff(() => index.namespace(namespace).upsert({ records: batchVectors }));

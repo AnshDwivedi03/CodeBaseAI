@@ -18,7 +18,7 @@ const HomeView = ({ repoUrl, setRepoUrl, handleIndex, indexing, indexed }) => {
       setStepIndex(0);
       interval = setInterval(() => {
         setStepIndex((prev) => (prev < loadingSteps.length - 1 ? prev + 1 : prev));
-      }, 2500); // Progress to next step every 2.5s
+      }, 8500); // Progress to next step roughly every 8.5s to align with a ~40s backend process
     } else {
       setStepIndex(0);
     }
