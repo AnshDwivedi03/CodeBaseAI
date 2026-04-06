@@ -29,6 +29,13 @@ export const crawlRepo = async (dirPath, currentPath = '') => {
         if (!ALLOWED_EXTENSIONS.has(ext)) return [];
 
         try {
+          // Check file size to avoid loading huge files into memory (limits to 200KB)
+          const stat = await fs.stat(path.join(dirPath, entryPath));
+          if (stat.size > 200 * 1024) {
+            console.warn(`Skipping large file (>${Math.round(stat.size/1024)}KB): ${entryPath}`);
+            return [];
+          }
+
           const content = await fs.readFile(path.join(dirPath, entryPath), 'utf-8');
           return [{
             path: entryPath,
