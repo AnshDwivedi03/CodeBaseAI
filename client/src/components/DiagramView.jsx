@@ -246,22 +246,19 @@ const DiagramView = ({ repoUrl, diagram, routes, diagramLoading, handleDiagram, 
                 overflow: 'hidden',
                 backgroundColor: '#050505',
                 cursor: isDragging ? 'grabbing' : 'grab',
-                position: 'relative'
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
               }}
             >
               <div
                 ref={mermaidRef}
                 style={{
-                  position: 'absolute',
-                  top: '5%',
-                  left: '0',
-                  right: '0',
                   transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
-                  transformOrigin: 'top center',
+                  transformOrigin: 'center center',
                   transition: isDragging ? 'none' : 'transform 0.1s ease',
-                  width: '100%',
-                  display: 'flex',
-                  justifyContent: 'center',
+                  flexShrink: 0
                 }}
               />
             </div>

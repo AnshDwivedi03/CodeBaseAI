@@ -1006,10 +1006,6 @@ footer {
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 16px;
   padding: 0.5rem 0;
-  max-height: 500px;
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(245, 176, 65, 0.3) transparent;
 }
 
 .file-tree-content::-webkit-scrollbar {
